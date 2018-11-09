@@ -1,0 +1,2 @@
+# JPTrunfo
+JPTrunfo new game
