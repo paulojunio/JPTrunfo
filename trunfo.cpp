@@ -63,15 +63,33 @@ void printExplicarGame() {
     printf("O valores que você podera escolher é: \n1- %s.\n2- %s.\n3- %s.\n4- %s.\n5- %s.\n", trunfo.nomeValor1,trunfo.nomeValor2,trunfo.nomeValor3,trunfo.nomeValor4,trunfo.nomeValor5);
     printf("Digite \"Pronto\" para começar o game, espere pelo menos 2 jogares para começar");
 }
-
+void colocarCartas() {
+    int numeroDeCartas = 32/clientes.size();
+    int random = rand() % 32;
+    for(int i = 0; i < clientes.size();i++){
+        for(int j = 0; j < numeroDeCartas; j++){
+            Carta carta = trunfo.todasAsCartas[random];
+            clientes[i].cartas.push_back(carta);
+        }
+    }
+}
 void printfComecarGame() {
     printf("\nCartas sendo embaralhadas...");
     srand(time(NULL));
     int primeiroJogador = rand()% clientes.size();
     printf("\nPrimeiro jogador a começar é: %d ", primeiroJogador);
 
-    for(int i = 0; i < clientes.size(); i++){
-        //mostrar a primeira crata ao jogadores, usando printCarta.
+    colocarCartas();
+    while(1) {
+        for(int i = 0; i < clientes.size(); i++){
+            //mostrar a primeira crata ao jogadores, usando printCarta.
+        }
+        //Primeiro jogador mandar o valor escolhido.
+        //Calcula o maior valor com a funcao calcularGanhadores
+        //Retorna a lista de ganhadores, se for maior que 1 ganhador, faz outra rodada com os ganhadores da ultimo.
+        // se nao so pega as cartas, exclui dos perdedores e bota no ganhador.
+        //faca isso ate ter uma pessoa com 32 cartas na mao.
+        //se o jogador nao tem nenhuma carta ele sai do jogo.
     }
 }
 
@@ -132,7 +150,7 @@ int main() {
     
     
     ifstream inFile;
-    inFile.open("CSGOTrunfo.txt");
+    inFile.open("CSGOWeapons.txt");
     if (!inFile) {
         cerr << "Trunfo não encontrado";
         exit(1);   // call system to stop
