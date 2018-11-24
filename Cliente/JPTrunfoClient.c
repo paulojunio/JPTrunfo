@@ -11,9 +11,9 @@ int main(int argc, char const *argv[])
 	struct sockaddr_in address; 
 	int sock = 0, valread; 
 	struct sockaddr_in serv_addr; 
-	char *hello = "Quero jogar o JPTrunfo!"; 
-	char buffer[1024] = {0}; 
 	char mensagem[1024];
+	char mensagemServidor[1024];
+	int flag = 0;
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
 	{ 
@@ -39,23 +39,30 @@ int main(int argc, char const *argv[])
 		return -1; 
 	} 
 	
-	printf("Conectando ao servido JPTRUNFO...\n");
+	printf("Conectando ao servidor JPTRUNFO...\n");
 
 	while(1) {
-		printf("Digite alguma coisa para enviar pro servidor: ");
-		scanf("%s",&mensagem[0]);
-		send(sock , mensagem , strlen(mensagem) , 0 ); 
-
-		if(strcmp(mensagem,"sair") == 0) {
-			close(sock);
-			printf("\nDisconectado, obrigado por jogar!!!\n");
-			exit(1);
-		}
-
-		if(recv( sock , mensagem, 1024,0) < 0) {
+		memset(mensagem,'\0',sizeof(mensagem));
+		memset(mensagemServidor,'\0',sizeof(mensagemServidor));
+		if(recv( sock , mensagemServidor, 1024,0) < 0) {
 			printf("\nErro ao receber uma mensagem.\n");
 		}else{
-			printf("Servidor: %s\n", mensagem);
+			printf("Servidor: %s\n", mensagemServidor);
+			if(strcmp(mensagemServidor,"Você acabou de aceitar a partida, agora espere os outros jogadores!") == 0){
+				flag = 1;
+			} 
+
+		}
+		if(flag != 1) {
+			printf("Digite alguma coisa para enviar pro servidor: ");
+			scanf("%s",&mensagem[0]);
+			send(sock , mensagem , strlen(mensagem) , 0 ); 
+
+			if(strcmp(mensagem,"sair") == 0) {
+				close(sock);
+				printf("\nDisconectado, obrigado por jogar!!!\n");
+				exit(1);
+			}
 		}
 	}
 } 

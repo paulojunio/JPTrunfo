@@ -21,15 +21,20 @@ int main(int argc , char *argv[])
 	int master_socket , addrlen , new_socket , client_socket[8] , 
 		max_clients = 8 , activity, i , valread , sd; 
 	int max_sd;
+	int numberPlayers = 0;
+	int numberReadys = 0;
+	int playersConfirm [8];
+	for(int i = 0; i < 8; i++) {
+		playersConfirm[i] = 0;
+	}
 	struct sockaddr_in address; 
 		
 	char buffer[1025]; //data buffer of 1K 
-		
 	//set of socket descriptors 
 	fd_set readfds; 
 		
 	//a message 
-	char *message = "Seja Bem-vindo ao JPTrunfo, o trunfo que irar jogar agora é : CSGOWeapons.\nO jogo pode ter de 2 a 8 jogadores.\nDigite \"Pronto\" para começar o game, espere pelo menos 2 jogares para comecar."; 
+	char *message = "Seja Bem-vindo ao JPTrunfo, o trunfo que irar jogar agora é : CSGOWeapons.\nO jogo pode ter de 2 a 8 jogadores.\nDigite \"Pronto\" para começar o game, espere pelo menos 2 jogares para comecar.\0"; 
 	
 	//initialise all client_socket[] to 0 so not checked 
 	for (i = 0; i < max_clients; i++) 
@@ -141,14 +146,14 @@ int main(int argc , char *argv[])
 				if( client_socket[i] == 0 ) 
 				{ 
 					client_socket[i] = new_socket; 
+					numberPlayers++;
 					printf("Adding to list of sockets as %d\n" , i); 
-						
 					break; 
 				} 
 			} 
 		} 
 			
-		// agora ele trata eventos de entrada e saida
+		// agora ele trata eventos de entrada e saida, tentando pegar todos os prontos dos jogadores.
 		for (i = 0; i < max_clients; i++) 
 		{ 
 			sd = client_socket[i]; 
@@ -173,12 +178,40 @@ int main(int argc , char *argv[])
 				{ 
 					//set the string terminating NULL byte on the end
 					//of the data read 
-					buffer[valread] = '\0';
-					send(sd , buffer , strlen(buffer) , 0 ); 
-				} 
-				send(sd , buffer , strlen(buffer) , 0 ); 
+					if(strcmp(buffer,"Pronto") == 0 && playersConfirm[i] == 0) {
+						playersConfirm[i] = 1;
+						numberReadys++;
+						//puts("Entro aqui1");
+						char *messageP = "Você acabou de aceitar a partida, agora espere os outros jogadores!\0";
+						send(sd,messageP,strlen(messageP),0);
+					}else{
+						if(playersConfirm[i] == 0) {
+							//puts("Entro aqui2");
+							char *messageP = "Você precisa digitar \"Pronto\" para começar a partida!\0";
+							send(sd,messageP,strlen(messageP),0);
+						}else{
+							//puts("Entro aqui3");
+							char *messageP = "Pare de digitar, os jogadores precisam aceitar para começar o jogo!\0";
+							send(sd,messageP,strlen(messageP),0);
+						}
+					}
+				}  
 			} 
 		} 
+		if(numberPlayers >= 2 && numberPlayers == numberReadys) {
+			
+			char *messageP = "\nJogo começou, as cartas serão dividas aleatoriamentes!\n\0";
+			puts("Entro aqui");
+			for (i = 0; i < max_clients; i++) {
+				sd = client_socket[i]; 
+				if (FD_ISSET( sd , &readfds)) {
+					sd = client_socket[i]; 
+					send(sd,messageP,strlen(messageP),0);
+				}
+			}
+			
+			//while(1){}
+		}
 	} 
 		
 	return 0; 
