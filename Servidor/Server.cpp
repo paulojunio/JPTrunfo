@@ -10,11 +10,127 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros 
-	
+#include <limits.h>
+#include <vector>
+#include <fstream>
+#include <algorithm>
+#include <time.h>
+
+
+using namespace std;
+
 #define TRUE 1 
 #define FALSE 0 
 #define PORT 8888 
 	
+/*struct Carta
+{
+    string nomeDaCarta; 
+    int valor1;
+    int valor2; 
+    int valor3; 
+    int valor4;  
+    int valor5;
+
+};
+
+struct Trunfo 
+{
+    string nomeDoTrunfo;
+    string nomeValor1;
+    string nomeValor2;
+    string nomeValor3;
+    string nomeValor4;
+    string nomeValor5;
+    
+};
+
+struct Cliente
+{   
+    vector <Carta> cartas;
+};
+
+
+Trunfo trunfo;
+vector <Cliente> clientes;
+
+void criarTrunfo(int numeroClientes) {
+	ifstream inFile;
+    inFile.open("CSGOWeapons.txt");
+    if (!inFile) {
+        cerr << "Trunfo não encontrado";
+        exit(1);   // call system to stop
+    }
+
+    inFile >> trunfo.nomeDoTrunfo;
+    inFile >> trunfo.nomeValor1;
+    inFile >> trunfo.nomeValor2;
+    inFile >> trunfo.nomeValor3;
+    inFile >> trunfo.nomeValor4;
+    inFile >> trunfo.nomeValor5;
+
+	vector <Carta> todasAsCartas;
+    for(int i = 0; i < 32; i++) {
+        Carta carta;
+        inFile >> carta.nomeDaCarta; 
+        inFile >> carta.valor1; 
+        inFile >> carta.valor2; 
+        inFile >> carta.valor3; 
+        inFile >> carta.valor4; 
+        inFile >> carta.valor5; 
+        todasAsCartas.push_back(carta);
+    }
+	int cont 32;
+	int numeroDeCartas = 32/numeroClientes;
+    int random;
+    for(int i = 0; i < numeroClientes;i++){
+		Cliente cliente;
+        for(int j = 0; j < numeroDeCartas; j++){
+			random = rand() % cont;
+            Carta carta = todasAsCartas[random];
+            cliente.cartas.push_back(carta);
+			cont--;
+        }
+		clientes.push_back(cliente);
+    }
+
+}
+int ganhadorTurno(int i) {
+	int ganhador = -1;
+	int maiorValor = -1;
+	for(int i = 0; i < clientes.size();i++){
+        if(valor == 1) {
+            if(maiorValor < clientes[i].cartas[0].valor1) {
+                maiorValor = clientes[i].cartas[0].valor1;
+				ganhador = i;
+            }
+        }else if(valor == 2) {
+            if(maiorValor < clientes[i].cartas[0].valor2) {
+                maiorValor = clientes[i].cartas[0].valor2;
+				ganhador = i;
+            }
+        }else if(valor == 3) {
+            if(maiorValor < clientes[i].cartas[0].valor3) {
+                maiorValor = clientes[i].cartas[0].valor3;
+				ganhador = i;
+            }
+        }else if(valor == 4) {
+            if(maiorValor < clientes[i].cartas[0].valor4) {
+                maiorValor = clientes[i].cartas[0].valor4;
+				ganhador = i;
+            }
+        }else{
+            if(maiorValor < clientes[i].cartas[0].valor5) {
+                maiorValor = clientes[i].cartas[0].valor5;
+				ganhador = i;
+            }
+        }
+    }
+	for(int i = 0; i < clientes.size(); i++) {
+
+	}
+	return ganhador;
+}*/
 int main(int argc , char *argv[]) 
 { 
 	int opt = TRUE; 
@@ -23,6 +139,7 @@ int main(int argc , char *argv[])
 	int max_sd;
 	int numberPlayers = 0;
 	int numberReadys = 0;
+	srand(time(NULL));
 	int playersConfirm [8];
 	for(int i = 0; i < 8; i++) {
 		playersConfirm[i] = 0;
@@ -34,7 +151,7 @@ int main(int argc , char *argv[])
 	fd_set readfds; 
 		
 	//a message 
-	char *message = "Seja Bem-vindo ao JPTrunfo, o trunfo que irar jogar agora é : CSGOWeapons.\nO jogo pode ter de 2 a 8 jogadores.\nDigite \"Pronto\" para começar o game, espere pelo menos 2 jogares para comecar.\0"; 
+	char *message = "Seja bem vindo ao servido Mini_interpretador!\0"; 
 	
 	//initialise all client_socket[] to 0 so not checked 
 	for (i = 0; i < max_clients; i++) 
@@ -171,6 +288,11 @@ int main(int argc , char *argv[])
 					//zera a posição que o client pertencia pra ser reutilizada
 					close( sd ); 
 					client_socket[i] = 0; 
+					numberPlayers--;
+					if(playersConfirm[i] == 1) {
+						numberReadys--;
+						playersConfirm[i] = 0;
+					}
 				} 
 				//TODO: Lidar com as seleções do usuario
 				//Nesse caso é quando o valread != 0, ou seja, teve alguma entrada, então ele tá só printando de volta
@@ -198,22 +320,10 @@ int main(int argc , char *argv[])
 				}  
 			} 
 		} 
-		if(numberPlayers >= 2 && numberPlayers == numberReadys) {
-			
-			char *messageP = "\nJogo começou, as cartas serão dividas aleatoriamentes!\n\0";
-			puts("Entro aqui");
-			for (i = 0; i < max_clients; i++) {
-				sd = client_socket[i]; 
-				if (FD_ISSET( sd , &readfds)) {
-					sd = client_socket[i]; 
-					send(sd,messageP,strlen(messageP),0);
-				}
-			}
-			
-			//while(1){}
-		}
 	} 
 		
 	return 0; 
 } 
+
+
 

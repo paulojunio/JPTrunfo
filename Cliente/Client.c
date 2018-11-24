@@ -4,6 +4,15 @@
 #include <stdlib.h> 
 #include <netinet/in.h> 
 #include <string.h> 
+#include <stdio.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #define PORT 8888 
 
 int main(int argc, char const *argv[]) 
@@ -39,7 +48,7 @@ int main(int argc, char const *argv[])
 		return -1; 
 	} 
 	
-	printf("Conectando ao servidor JPTRUNFO...\n");
+	printf("Conectando ao servidor...\n");
 
 	while(1) {
 		memset(mensagem,'\0',sizeof(mensagem));
@@ -47,22 +56,17 @@ int main(int argc, char const *argv[])
 		if(recv( sock , mensagemServidor, 1024,0) < 0) {
 			printf("\nErro ao receber uma mensagem.\n");
 		}else{
-			printf("Servidor: %s\n", mensagemServidor);
-			if(strcmp(mensagemServidor,"Você acabou de aceitar a partida, agora espere os outros jogadores!") == 0){
-				flag = 1;
-			} 
-
+			printf("Servidor: %s\n", mensagemServidor);	
 		}
-		if(flag != 1) {
-			printf("Digite alguma coisa para enviar pro servidor: ");
-			scanf("%s",&mensagem[0]);
-			send(sock , mensagem , strlen(mensagem) , 0 ); 
+		printf("Digite alguma coisa para enviar pro servidor: ");
+		scanf("%s",&mensagem[0]);
+		send(sock , mensagem , strlen(mensagem) , 0 ); 
 
-			if(strcmp(mensagem,"sair") == 0) {
-				close(sock);
-				printf("\nDisconectado, obrigado por jogar!!!\n");
-				exit(1);
-			}
+		if(strcmp(mensagem,"Sair") == 0) {
+			close(sock);
+			printf("\nDisconectando...\n");
+			exit(1);
+		}
 		}
 	}
 } 
