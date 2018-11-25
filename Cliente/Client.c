@@ -13,13 +13,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#define PORT 8888 
+#include <pthread.h>
 
+#define PORT 8888 
+int flag;
 /**
   * Metodo de criar um arquivo.
   */
-void criarArquivo(char *nomeArquivo) {
-   printf("\nDigite o nome do arquivo que será criado: ");
+void criarArquivo(char *nomeArquivo,int sock) {
    const char * nomeArq = nomeArquivo;
    mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH;
    int flag = creat(nomeArq,mode);
@@ -52,9 +53,8 @@ void criarArquivo(char *nomeArquivo) {
 /**
   * Metodo de deletar um arquivo.
   */
-void deletarArquivo(char *nomeArquivo) {
+void deletarArquivo(char *nomeArquivo,int sock) {
 	
-   printf("\nDigite o nome do arquivo ou link de um arquivo que será deletado: ");
    const char * nomeArq = nomeArquivo;
    int flag = unlink (nomeArq);
    
@@ -81,9 +81,8 @@ void deletarArquivo(char *nomeArquivo) {
    }
 }
 
-void criarDiretorio(char *nomeDiretorio) {
+void criarDiretorio(char *nomeDiretorio,int sock) {
    
-   printf("\nDigite o nome do diretório que será criado: ");
    const char * nomeDir = nomeDiretorio;
    int flag = mkdir (nomeDir,0755);
    
@@ -113,9 +112,8 @@ void criarDiretorio(char *nomeDiretorio) {
 /**
   * Metodo de deletar um diretorio.
   */
-void deletarDiretorio(char *nomeDiretorio) {
+void deletarDiretorio(char *nomeDiretorio,int sock) {
    
-   printf("\nDigite o nome do diretório que será deletado: ");
    const char * nomeDir = nomeDiretorio;
    int flag = rmdir (nomeDir);
    
@@ -145,24 +143,73 @@ void deletarDiretorio(char *nomeDiretorio) {
 /**
   * Metodo de listar o diretorio.
   */
-void listarDiretorio() {
-  
-   printf("\nArquivos encontrados:\n");
+void listarDiretorio(int sock) {
+   
+   
+  char *sendMessage = "\nArquivos encontrados:\n";
+
    DIR *dp;
    struct dirent *ep;
 
-   printf("\n");
    dp = opendir ("./");
    if (dp != NULL)
    {
       while (ep = readdir (dp))
-         puts (ep->d_name);
+         sprintf(sendMessage,"%s\n",ep->d_name);
+         //puts (ep->d_name);
       (void) closedir (dp);
+      send(sock,sendMessage,strlen(sendMessage),0);
    }
-   else
-      perror ("Não é possivel listar este diretorio.");
+   else {
+      char *messageSend = "Não é possivel listar este diretorio.\n";
+      send(sock,messageSend,strlen(messageSend),0);
+   }
   
-   printf("\n");
+}
+
+void *receiveMessages(void *sock_fd) {
+    int sock = *((int *)sock_fd);
+    char mensagemServidor[1024];
+    //printf("%d",sock);
+    while (1) {
+      memset(mensagemServidor,'\0',sizeof(mensagemServidor));
+      if(recv( sock , mensagemServidor, 1024,0) < 0) {
+        //printf("\nErro ao receber uma mensagem.\n");
+      }else{
+        if(strcmp(mensagemServidor,"Seja bem vindo ao servido Mini_interpretador!")) {
+          printf("Servido: %s\n",mensagemServidor);
+        }else{
+          printf("AAAAA %s", mensagemServidor);
+          flag = 1;
+          char *separado;
+          separado = strtok (mensagemServidor," ,.-");
+          int tipo;
+          char *nomeArq;
+          for(int i = 0; i < 3; i++) {
+            if(i == 1) {
+              tipo = (int) (*separado - '0');
+            }else if(i == 2) {
+              nomeArq = separado;
+            }
+            separado = strtok (NULL," ,.-");
+          }
+          if(tipo == 1) {
+            listarDiretorio(sock);
+          }else if(tipo == 2) {
+            criarArquivo(nomeArq,sock);
+          }else if(tipo == 3) {
+            deletarArquivo(nomeArq,sock);
+          }else if(tipo == 4) {
+            criarDiretorio(nomeArq,sock);
+          }else if(tipo == 5) {
+            deletarDiretorio(nomeArq,sock);
+          }else{
+            char* messageSend = "Tipo não aceito!";
+            send(sock, messageSend,strlen(messageSend),0);
+          }
+        }
+      }
+    }
 }
 
 int main(int argc, char const *argv[]) 
@@ -171,8 +218,7 @@ int main(int argc, char const *argv[])
 	int sock = 0, valread; 
 	struct sockaddr_in serv_addr; 
 	char mensagem[1024];
-	char mensagemServidor[1024];
-	int flag = 0;
+	flag = 0;
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
 	{ 
@@ -199,25 +245,28 @@ int main(int argc, char const *argv[])
 	} 
 	
 	printf("Conectando ao servidor...\n");
-
+  pthread_t recv_thread;
+  //printf("%d",sock);
+  if( pthread_create(&recv_thread, NULL, receiveMessages, (void*) &sock) < 0)
+  {   
+      perror("Não foi possivel criar a thread de menssagens");
+      return 1;
+  }  
 	while(1) {
-		memset(mensagem,'\0',sizeof(mensagem));
-		memset(mensagemServidor,'\0',sizeof(mensagemServidor));
-		if(recv( sock , mensagemServidor, 1024,0) < 0) {
-			printf("\nErro ao receber uma mensagem.\n");
-		}else{
-			printf("Servidor: %s\n", mensagemServidor);	
-		}
-		printf("Digite alguma coisa para enviar pro servidor: ");
-		scanf("%s",&mensagem[0]);
-		send(sock , mensagem , strlen(mensagem) , 0 ); 
-
-		if(strcmp(mensagem,"Sair") == 0) {
-			close(sock);
-			printf("\nDisconectando...\n");
-			exit(1);
-		}
-		}
+		if(flag == 1) {
+      memset(mensagem,'\0',sizeof(mensagem));		
+      //printf("Digite alguma coisa para enviar pro servidor: ");
+      scanf("%s",&mensagem[0]);
+      send(sock , mensagem , strlen(mensagem) , 0 ); 
+      
+      if(strcmp(mensagem,"Sair") == 0) {
+        close(sock);
+        printf("\nDisconectando...\n");
+        exit(1);
+      }
+    }
 	}
-} 
+  pthread_join(recv_thread , NULL);
+}
+
 
