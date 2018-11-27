@@ -21,8 +21,7 @@ int main(int argc , char *argv[])
 	int master_socket , addrlen , new_socket , client_socket[8] , 
 		max_clients = 8 , activity, i , valread , sd , sdt; 
 	int max_sd;
-	int numberPlayers = 0;
-	int numberReadys = 0;
+	int numberClients = 0;
 	int playersConfirm [8];
 	for(int i = 0; i < 8; i++) {
 		playersConfirm[i] = 0;
@@ -34,7 +33,7 @@ int main(int argc , char *argv[])
 	fd_set readfds; 
 		
 	//a message 
-	char *message = "Seja bem vindo ao servido Mini_interpretador!\0"; 
+	char *message = "Seja bem vindo ao servidor Mini_interpretador!\0"; 
 	
 	//initialise all client_socket[] to 0 so not checked 
 	for (i = 0; i < max_clients; i++) 
@@ -146,74 +145,51 @@ int main(int argc , char *argv[])
 				if( client_socket[i] == 0 ) 
 				{ 
 					client_socket[i] = new_socket; 
-					numberPlayers++;
+					numberClients++;
 					printf("Adding to list of sockets as %d\n" , i); 
 					break; 
 				} 
 			} 
 		} 
-			
-		// agora ele trata eventos de entrada e saida, tentando pegar todos os prontos dos jogadores.
-		for (i = 0; i < max_clients; i++) 
-		{ 
-			sd = client_socket[i]; 
-				
-			if (FD_ISSET( sd , &readfds)) 
+		if(numberClients >= 2) {
+			//puts("Entrou aqui");
+			// agora ele trata eventos de entrada e saida, tentando pegar todos os prontos dos jogadores.
+			for (i = 0; i < max_clients; i++) 
 			{ 
-				// Nesse caso, ele ta verificando se um client se desconectou
-				if ((valread = read( sd , buffer, 1024)) == 0) 
+				sd = client_socket[i]; 
+				
+				if (FD_ISSET( sd , &readfds)) 
 				{ 
-					//ele pega as informações do socket do client e printa na tela quando ele disconecta
-					getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen); 
-					printf("Host disconnected , ip %s , port %d \n" , 
-						inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
-						
-					//zera a posição que o client pertencia pra ser reutilizada
-					close( sd ); 
-					client_socket[i] = 0; 
-				} 
-				//TODO: Lidar com as seleções do usuario
-				//Nesse caso é quando o valread != 0, ou seja, teve alguma entrada, então ele tá só printando de volta
-				else
-				{ 
-					char *separado;
-					separado = strtok (buffer," ,.-");
-					puts(separado);
-					int clientMandar = (int) (*separado - '0');
-					//puts(clientMandar);
-					if(client_socket[clientMandar] != 0){
-						puts("Entrou aqui");
-						sdt = client_socket[clientMandar];
-						send(sdt,buffer,strlen(buffer),0);
-						memset(buffer,'\0',1024);
-						if(valread = read(sdt,buffer,1024) == 0) {
-
-							//ele pega as informações do socket do client e printa na tela quando ele disconecta
-							getpeername(sdt , (struct sockaddr*)&address , (socklen_t*)&addrlen); 
-							printf("Host disconnected , ip %s , port %d \n" , 
-								inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
-								
-							//zera a posição que o client pertencia pra ser reutilizada
-							close( sdt ); 
-							client_socket[clientMandar] = 0;
-
-						}else{
-							puts("VC ENTRO AQUI FDP?");
-							send(sd,buffer,strlen(buffer),0); 			
+					// Nesse caso, ele ta verificando se um client se desconectou
+					if ((valread = read( sd , buffer, 1024)) == 0) 
+					{ 
+						//ele pega as informações do socket do client e printa na tela quando ele disconecta
+						getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen); 
+						printf("Host disconnected , ip %s , port %d \n" , 
+							inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
+							
+						//zera a posição que o client pertencia pra ser reutilizada
+						close( sd ); 
+						client_socket[i] = 0; 
+					} 
+					//TODO: Lidar com as seleções do usuario
+					//Nesse caso é quando o valread != 0, ou seja, teve alguma entrada, então ele tá só printando de volta
+					else
+					{ 
+						for(int j = 0; j < max_clients; j++) {
+							if(j != i) {
+								sdt = client_socket[j];
+								send(sdt, buffer, strlen(buffer),0);
+								memset(buffer,'\0',sizeof(buffer));
+							}
 						}
-
-					}else{
-						puts("Entrou aqui1");
-						char *messageP = "Cliente não existe, tente outro!\0";
-						send(sd,messageP,strlen(messageP),0);
-					}
-				}  
+					}  
+				} 
 			} 
-		} 
+		}
 	} 
 		
 	return 0; 
 } 
-
 
 

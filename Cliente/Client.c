@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <pthread.h>
 
+
 #define PORT 8888 
 int flag;
 /**
@@ -146,27 +147,25 @@ void deletarDiretorio(char *nomeDiretorio,int sock) {
 void listarDiretorio(int sock) {
    
    
-  char *sendMessage = "\nArquivos encontrados:\n";
+  char sendMessage [1024];
+  strcpy(sendMessage,"\nArquivos encontrados: \n");
+  //send(sock,sendMessage,strlen(sendMessage),0);
+  DIR *dp;
+    struct dirent **list;
 
-   DIR *dp;
-   struct dirent *ep;
-
-   dp = opendir ("./");
-   if (dp != NULL)
-   {
-      while (ep = readdir (dp))
-         sprintf(sendMessage,"%s\n",ep->d_name);
-         //puts (ep->d_name);
-      (void) closedir (dp);
-      send(sock,sendMessage,strlen(sendMessage),0);
-   }
-   else {
-      char *messageSend = "Não é possivel listar este diretorio.\n";
-      send(sock,messageSend,strlen(messageSend),0);
-   }
-  
+    int count = scandir("./", &list, NULL, alphasort );
+     if( count < 0 ){
+         perror("Couldn't open the directory");
+         exit(1);
+     }
+    //printf("%u items in directory\n", count);
+    for( int i=0; i<count;i++){
+            //sprintf(sendMessage  , "%s",list[i]->d_name); Concatena a string.
+     }
+     send(sock,sendMessage,strlen(sendMessage),0);
+     
 }
-
+/*
 void *receiveMessages(void *sock_fd) {
     int sock = *((int *)sock_fd);
     char mensagemServidor[1024];
@@ -210,6 +209,13 @@ void *receiveMessages(void *sock_fd) {
         }
       }
     }
+}*/
+
+int isPartOf(char *a, char *b){
+   if(strstr(b,a) != NULL){    
+      return 1;
+   } 
+   return 0;
 }
 
 int main(int argc, char const *argv[]) 
@@ -218,7 +224,8 @@ int main(int argc, char const *argv[])
 	int sock = 0, valread; 
 	struct sockaddr_in serv_addr; 
 	char mensagem[1024];
-	flag = 0;
+  char mensagemServidor[1024];
+	int podeDigitar = 0;
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
 	{ 
@@ -245,20 +252,29 @@ int main(int argc, char const *argv[])
 	} 
 	
 	printf("Conectando ao servidor...\n");
-  pthread_t recv_thread;
-  //printf("%d",sock);
-  if( pthread_create(&recv_thread, NULL, receiveMessages, (void*) &sock) < 0)
-  {   
-      perror("Não foi possivel criar a thread de menssagens");
-      return 1;
-  }  
+   
 	while(1) {
-		if(flag == 1) {
-      memset(mensagem,'\0',sizeof(mensagem));		
-      //printf("Digite alguma coisa para enviar pro servidor: ");
+    memset(mensagemServidor,'\0',sizeof(mensagemServidor));
+    memset(mensagem,'\0',sizeof(mensagem));	
+    if(recv( sock , mensagemServidor, 1024,0) <= 0) {
+        
+    }else{
+        printf("Mensagem do servidor: %s\n", mensagemServidor);
+        if(isPartOf(mensagemServidor,"Seja bem vindo ao servidor Mini_interpretador!") != 1) {
+          if(flag == 0) {
+            //printf("%d", sock);
+            listarDiretorio(sock);
+            flag = 1;
+            podeDigitar = 0;
+          }
+        }
+    }
+
+    if(podeDigitar == 0) {
+      printf("Digite alguma coisa para enviar pro servidor: ");
       scanf("%s",&mensagem[0]);
       send(sock , mensagem , strlen(mensagem) , 0 ); 
-      
+      podeDigitar = 1;
       if(strcmp(mensagem,"Sair") == 0) {
         close(sock);
         printf("\nDisconectando...\n");
@@ -266,7 +282,7 @@ int main(int argc, char const *argv[])
       }
     }
 	}
-  pthread_join(recv_thread , NULL);
+
 }
 
 
