@@ -1,16 +1,14 @@
-//Example code: A simple server side code, which echos back the received message. 
-//Handle multiple socket connections with select and fd_set on Linux 
-#include <stdio.h> 
-#include <string.h> //strlen 
-#include <stdlib.h> 
-#include <errno.h> 
-#include <unistd.h> //close 
-#include <arpa/inet.h> //close 
-#include <sys/types.h> 
-#include <sys/socket.h> 
-#include <netinet/in.h> 
-#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros 
-
+#include <stdio.h>
+#include <string.h>   //strlen
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>   //close
+#include <arpa/inet.h>    //close
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
+	
 #define TRUE 1 
 #define FALSE 0 
 #define PORT 8888 
@@ -18,22 +16,20 @@
 int main(int argc , char *argv[]) 
 { 
 	int opt = TRUE; 
-	int master_socket , addrlen , new_socket , client_socket[8] , 
-		max_clients = 8 , activity, i , valread , sd , sdt; 
-	int max_sd;
-	int numberClients = 0;
-	int playersConfirm [8];
-	for(int i = 0; i < 8; i++) {
-		playersConfirm[i] = 0;
-	}
+	int master_socket , addrlen , new_socket , client_socket[30] , 
+		max_clients = 30 , activity, i , valread , sd, numConn = 0; 
+	int max_sd; 
 	struct sockaddr_in address; 
 		
 	char buffer[1025]; //data buffer of 1K 
+		
 	//set of socket descriptors 
 	fd_set readfds; 
 		
 	//a message 
-	char *message = "Seja bem vindo ao servidor Mini_interpretador!\0"; 
+	char *message = "Bem vindo ao MiniInterpretador!!\n Com ele voce pode cirar/modificar arquivos de outros clientes.";
+	char *awaiting = "\nInfelizmente nao ha clientes suficientes, aguardando clientes...";
+	char *errmsg = "Target Invalido!";
 	
 	//initialise all client_socket[] to 0 so not checked 
 	for (i = 0; i < max_clients; i++) 
@@ -44,7 +40,7 @@ int main(int argc , char *argv[])
 	//create a master socket 
 	if( (master_socket = socket(AF_INET , SOCK_STREAM , 0)) == 0) 
 	{ 
-		perror("Falha ao inicializar socket mestre!"); 
+		perror("socket failed"); 
 		exit(EXIT_FAILURE); 
 	} 
 	
@@ -53,7 +49,7 @@ int main(int argc , char *argv[])
 	if( setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, 
 		sizeof(opt)) < 0 ) 
 	{ 
-		perror("Falha ao ativar multiplas conexões no socket mestre!"); 
+		perror("setsockopt"); 
 		exit(EXIT_FAILURE); 
 	} 
 	
@@ -65,7 +61,7 @@ int main(int argc , char *argv[])
 	//bind the socket to localhost port 8888 
 	if (bind(master_socket, (struct sockaddr *)&address, sizeof(address))<0) 
 	{ 
-		perror("Falha ao ligar o socket mestre"); 
+		perror("bind failed"); 
 		exit(EXIT_FAILURE); 
 	} 
 	printf("Listener on port %d \n", PORT); 
@@ -114,11 +110,10 @@ int main(int argc , char *argv[])
 			printf("select error"); 
 		} 
 			
-		/**
-		 * Aqui a gnt vê que tem uma nova conexão..
-		 */
+		//If something happened on the master socket , 
+		//then its an incoming connection 
 		if (FD_ISSET(master_socket, &readfds)) 
-		{  // esse if tenta aceitar essa conexao e armazena ela em new_socket
+		{ 
 			if ((new_socket = accept(master_socket, 
 					(struct sockaddr *)&address, (socklen_t*)&addrlen))<0) 
 			{ 
@@ -127,69 +122,99 @@ int main(int argc , char *argv[])
 			} 
 			
 			//inform user of socket number - used in send and receive commands 
-			printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , new_socket , inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
+			printf("New connection , socket fd is %d , ip is : %s , port : %d\n" , new_socket , inet_ntoa(address.sin_addr) , ntohs 
+				(address.sin_port)); 
 		
-		    //TODO: Além de mandar a msg de boas vindas(printExplicarGame), podemos mandar as cartas dele.
-			// depois que aceitou, ele tenta mandar uma msg de boas vindas (message foi declarado lá no inicio)
+			//send new connection welcoming message and configuration message
+
+			// envia mensagem de boas vindas
 			if( send(new_socket, message, strlen(message), 0) != strlen(message) ) 
 			{ 
 				perror("send"); 
-			} 
-				
-			puts("Welcome message sent successfully"); 
-				
-			//esse array client_socket é o array de todos os clients que estão conectados
+			}
+
+			if( numConn < 2){
+				// envia mensagem de aguardando jogadores...
+				if( send(new_socket, awaiting, strlen(awaiting), 0) != strlen(awaiting) ) 
+				{ 
+					perror("send"); 
+				}
+
+			}
+							// por fim envia mensagem informando qual seu index...	
+				char * index = malloc(sizeof(numConn)+ sizeof(char) + 3);
+				sprintf (index, "id:%d", numConn);
+				if (send(new_socket, index, strlen(index), 0) != strlen(index)){
+					perror("send");
+				}
+			puts("Mensagem de boas vindas enviada com sucesso!"); 				
+			//add new socket to array of sockets 
 			for (i = 0; i < max_clients; i++) 
 			{ 
 				//if position is empty 
 				if( client_socket[i] == 0 ) 
-				{ 
+				{
 					client_socket[i] = new_socket; 
-					numberClients++;
-					printf("Adding to list of sockets as %d\n" , i); 
+					printf("Posicao do novo client: %d\n" , i); 		
+					numConn++;
 					break; 
+				}
+			} 
+		} 
+			
+		//else its some IO operation on some other socket
+		for (i = 0; i < max_clients; i++) 
+		{ 
+			sd = client_socket[i]; 
+				
+			if (FD_ISSET( sd , &readfds)) 
+			{ 
+				//Check if it was for closing , and also read the 
+				//incoming message 
+				if ((valread = read( sd , buffer, 1024)) == 0) 
+				{ 
+					//Somebody disconnected , get his details and print 
+					getpeername(sd , (struct sockaddr*)&address , \ 
+						(socklen_t*)&addrlen); 
+					printf("Client desconectado , ip %s , port %d \n" , 
+						inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
+						
+					//Close the socket and mark as 0 in list for reuse 
+					close( sd ); 
+					client_socket[i] = 0; 
+				} 
+				//tratar comando do usuario.
+				else
+				{ 
+					if( numConn >=2 ){
+						puts(buffer);
+						buffer[valread] = '\0';
+                        int user, target, command;
+                        char * msg;
+                        char * token;
+                        token = strtok (buffer, " .,-");
+                        for(int j = 0; j < 4; j ++)
+                        {
+                          if(j == 0){
+							user = (int) (*token - '0');
+						  }else if(j == 1){
+                            target = (int) (*token - '0');
+						  }else if(j == 2){
+                            msg = token;
+						  }else if(j == 3){
+                            command = (int) (*token - '0');
+						  }
+						 token = strtok (NULL, " .,-");
+                        }
+							if(client_socket[target] > 0 && target < numConn)
+                        		send(client_socket[target], msg, strlen(msg), 0);
+							else
+								send(client_socket[i], errmsg, strlen(errmsg), 0);
+					}
 				} 
 			} 
 		} 
-		if(numberClients >= 2) {
-			//puts("Entrou aqui");
-			// agora ele trata eventos de entrada e saida, tentando pegar todos os prontos dos jogadores.
-			for (i = 0; i < max_clients; i++) 
-			{ 
-				sd = client_socket[i]; 
-				
-				if (FD_ISSET( sd , &readfds)) 
-				{ 
-					// Nesse caso, ele ta verificando se um client se desconectou
-					if ((valread = read( sd , buffer, 1024)) == 0) 
-					{ 
-						//ele pega as informações do socket do client e printa na tela quando ele disconecta
-						getpeername(sd , (struct sockaddr*)&address , (socklen_t*)&addrlen); 
-						printf("Host disconnected , ip %s , port %d \n" , 
-							inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
-							
-						//zera a posição que o client pertencia pra ser reutilizada
-						close( sd ); 
-						client_socket[i] = 0; 
-					} 
-					//TODO: Lidar com as seleções do usuario
-					//Nesse caso é quando o valread != 0, ou seja, teve alguma entrada, então ele tá só printando de volta
-					else
-					{ 
-						for(int j = 0; j < max_clients; j++) {
-							if(j != i) {
-								sdt = client_socket[j];
-								send(sdt, buffer, strlen(buffer),0);
-								memset(buffer,'\0',sizeof(buffer));
-							}
-						}
-					}  
-				} 
-			} 
-		}
 	} 
 		
 	return 0; 
-} 
-
-
+}

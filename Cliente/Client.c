@@ -9,19 +9,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <pthread.h>
 
-
+	
+#define TRUE 1 
+#define FALSE 0 
 #define PORT 8888 
 int flag;
 /**
   * Metodo de criar um arquivo.
   */
-void criarArquivo(char *nomeArquivo,int sock) {
+void criarArquivo(char *nomeArquivo,int sock) { //MF
    const char * nomeArq = nomeArquivo;
    mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH;
    int flag = creat(nomeArq,mode);
@@ -54,7 +57,7 @@ void criarArquivo(char *nomeArquivo,int sock) {
 /**
   * Metodo de deletar um arquivo.
   */
-void deletarArquivo(char *nomeArquivo,int sock) {
+void deletarArquivo(char *nomeArquivo,int sock) { //DF
 	
    const char * nomeArq = nomeArquivo;
    int flag = unlink (nomeArq);
@@ -82,7 +85,7 @@ void deletarArquivo(char *nomeArquivo,int sock) {
    }
 }
 
-void criarDiretorio(char *nomeDiretorio,int sock) {
+void criarDiretorio(char *nomeDiretorio,int sock) { //MD
    
    const char * nomeDir = nomeDiretorio;
    int flag = mkdir (nomeDir,0755);
@@ -113,7 +116,7 @@ void criarDiretorio(char *nomeDiretorio,int sock) {
 /**
   * Metodo de deletar um diretorio.
   */
-void deletarDiretorio(char *nomeDiretorio,int sock) {
+void deletarDiretorio(char *nomeDiretorio,int sock) { //DD
    
    const char * nomeDir = nomeDiretorio;
    int flag = rmdir (nomeDir);
@@ -144,9 +147,7 @@ void deletarDiretorio(char *nomeDiretorio,int sock) {
 /**
   * Metodo de listar o diretorio.
   */
-void listarDiretorio(int sock) {
-   
-   
+void listarDiretorio(int sock) { //LD
   char sendMessage [1024];
   strcpy(sendMessage,"\nArquivos encontrados: \n");
   //send(sock,sendMessage,strlen(sendMessage),0);
@@ -212,7 +213,7 @@ void *receiveMessages(void *sock_fd) {
 }*/
 
 int isPartOf(char *a, char *b){
-   if(strstr(b,a) != NULL){    
+   if(strstr(a,b) != NULL){    
       return 1;
    } 
    return 0;
@@ -221,11 +222,12 @@ int isPartOf(char *a, char *b){
 int main(int argc, char const *argv[]) 
 { 
 	struct sockaddr_in address; 
-	int sock = 0, valread; 
 	struct sockaddr_in serv_addr; 
+	int sock = 0, valread, myIndex = -1;
 	char mensagem[1024];
-  char mensagemServidor[1024];
+   char message[1024], server_reply[1024];
 	int podeDigitar = 0;
+   char * id = ":";
 	
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
 	{ 
@@ -244,45 +246,91 @@ int main(int argc, char const *argv[])
 		printf("\nEndereco invalido ou nao suportado!\n"); 
 		return -1; 
 	} 
+
 	//tenta conectar ao servidor, nesse caso ele nao ta armazenando a conexao e ele realiza a operacao e dps disconecta..
 	if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
-	{ 
+	{
 		printf("\n Falha na Conexão !\n"); 
-		return -1; 
-	} 
-	
-	printf("Conectando ao servidor...\n");
-   
-	while(1) {
-    memset(mensagemServidor,'\0',sizeof(mensagemServidor));
-    memset(mensagem,'\0',sizeof(mensagem));	
-    if(recv( sock , mensagemServidor, 1024,0) <= 0) {
-        
-    }else{
-        printf("Mensagem do servidor: %s\n", mensagemServidor);
-        if(isPartOf(mensagemServidor,"Seja bem vindo ao servidor Mini_interpretador!") != 1) {
-          if(flag == 0) {
-            //printf("%d", sock);
-            listarDiretorio(sock);
-            flag = 1;
-            podeDigitar = 0;
-          }
-        }
-    }
-
-    if(podeDigitar == 0) {
-      printf("Digite alguma coisa para enviar pro servidor: ");
-      scanf("%s",&mensagem[0]);
-      send(sock , mensagem , strlen(mensagem) , 0 ); 
-      podeDigitar = 1;
-      if(strcmp(mensagem,"Sair") == 0) {
-        close(sock);
-        printf("\nDisconectando...\n");
-        exit(1);
-      }
-    }
+		return -1;
 	}
+	printf("Conectando ao servidor...\n");
 
+   char *hello = "0.1.joao.3";
+   char *hello2 = "0.1.paulo.3";
+   while(TRUE){
+      if((valread = read(sock, server_reply, 1024)) > 0){
+         char * buffer = (char *)malloc(strlen(server_reply)+1);
+         strcpy(buffer, server_reply);
+         if(isPartOf(buffer, id) == 0){
+            printf("\n %s\n", server_reply);
+         }else{
+            char * token = strtok(buffer, ":");
+            for(int i = 0; i < 2; i++){
+               if (i == 1)
+                  myIndex = (int)(*token-'0');
+                  token = strtok(NULL, ":");
+            }
+            memset(server_reply,0, sizeof(server_reply));    
+            break;
+         }
+         memset(server_reply,0, sizeof(server_reply));
+      }
+   }
+
+   int command = 0;
+    struct timeval tmo;
+    fd_set readfds;
+
+    printf("Enter a non-zero number: ");
+    fflush(stdout);
+
+    /* wait only 5 seconds for user input */
+    FD_ZERO(&readfds);
+    FD_SET(0, &readfds);
+    tmo.tv_sec = 0.1;
+    tmo.tv_usec = 0;
+
+	while(TRUE) {
+      //DESCOMENTAR PARA TESTAR COMANDOS (tem que executar 2 terminais e digitar em cada um deles para que a msg seja enviada...)
+   //        fflush(stdout);
+
+   //  /* wait only 5 seconds for user input */
+   //    FD_ZERO(&readfds);
+   //    FD_SET(0, &readfds);
+   //    tmo.tv_sec = 0.1;
+   //    tmo.tv_usec = 0;
+   //    switch (select(1, &readfds, NULL, NULL, &tmo)) {
+   //    case -1:
+   //       err(1, "select");
+   //       break;
+   //    case 0:
+   //       continue;
+   //    }
+   //    if(scanf("%d", &command) == 1){
+   //       send(sock, hello, strlen(hello), 0);
+   //    }
+
+   //    if((valread = read(sock, server_reply, 1024)) > 0){
+   //           send(sock, hello2, strlen(hello2), 0);
+   //           printf("%s\n", server_reply); 
+   //           server_reply[valread] = '\0';
+   //           memset(server_reply,0, sizeof(server_reply));  
+   //    }
+        
+
+      //DESCOMENTAR PARA TESTAR LOOP 
+      // send(sock, hello, strlen(hello), 0);
+      // while((valread = read(sock, server_reply, 1024)) > 0 && TRUE){
+      //       send(sock, hello2, strlen(hello2), 0);
+      //       printf("%s\n", server_reply); 
+      //       server_reply[valread] = '\0';
+      //       memset(server_reply,0, sizeof(server_reply));     
+      // }
+      
+
+      
+   }
+   return 0;
 }
 
 

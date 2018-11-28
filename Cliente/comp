@@ -1,0 +1,4 @@
+#!/bin/bash
+clear
+gcc Client.c -o client -w
+./client

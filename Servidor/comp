@@ -1,0 +1,4 @@
+#!/bin/bash
+clear
+gcc Server.c -o server -w
+./server
