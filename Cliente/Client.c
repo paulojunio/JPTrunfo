@@ -29,9 +29,13 @@ void criarArquivo(char *nomeArquivo,int sock) { //MF
    mode_t mode = S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH;
    int flag = creat(nomeArq,mode);
    if(flag != -1) {
-      printf("Foi criado o arquivo: %s\n", nomeArq);   	
+      char sendMessage [1024];
+      sprintf(sendMessage,"Foi criado o arquivo: %s\n", nomeArq);   
+      //send(sock,sendMessage,strlen(sendMessage),0);	
    }
    else{
+     char *error = "Algo de errado ocorreu!";
+     //send (sock, error, strlen(error),0);
       printf("Não foi possivel criar o arquivo: %s, pois ", nomeArq);
       
       switch(errno) {
@@ -63,9 +67,13 @@ void deletarArquivo(char *nomeArquivo,int sock) { //DF
    int flag = unlink (nomeArq);
    
    if(flag != -1){
-      printf("Foi delatado o arquivo/link: %s\n", nomeArq);
+      char sendMessage [1024];
+      sprintf(sendMessage,"Foi delatado o arquivo/link: %s\n", nomeArq);
+      //send(sock,sendMessage,strlen(sendMessage),0);
    }
    else{
+     char *error = "Algo de errado ocorreu!";
+     //send (sock, error, strlen(error),0);
       printf("Não foi possivel deletar o arquivo/link: %s, pois ", nomeArq);
       
       switch(errno) {
@@ -91,9 +99,13 @@ void criarDiretorio(char *nomeDiretorio,int sock) { //MD
    int flag = mkdir (nomeDir,0755);
    
    if(flag == 0){
-      printf("Foi criada a pasta: %s\n", nomeDir);
+      char sendMessage [1024];
+      sprintf(sendMessage,"Foi criada a pasta: %s\n", nomeDir);
+      //send(sock,sendMessage,strlen(sendMessage),0);
    }
    else{
+     char *error = "Algo de errado ocorreu!";
+     //send (sock, error, strlen(error),0);
       printf("Não foi possivel criar a pasta: %s, pois ", nomeDir);
       
       switch(errno) {
@@ -120,11 +132,15 @@ void deletarDiretorio(char *nomeDiretorio,int sock) { //DD
    
    const char * nomeDir = nomeDiretorio;
    int flag = rmdir (nomeDir);
-   
+
    if(flag == 0) {
-      printf("Foi deletada a pasta: %s\n", nomeDir);
+      char sendMessage [1024];
+      sprintf(sendMessage,"Foi deletada a pasta: %s\n", nomeDir);
+      //send(sock,sendMessage,strlen(sendMessage),0);
    }
    else{
+     char *error = "Algo de errado ocorreu!";
+     //send (sock, error, strlen(error),0);
       printf("Não foi possivel deletar a pasta: %s, pois ", nomeDir);
       
       switch(errno) {
@@ -148,22 +164,26 @@ void deletarDiretorio(char *nomeDiretorio,int sock) { //DD
   * Metodo de listar o diretorio.
   */
 void listarDiretorio(int sock) { //LD
-  char sendMessage [1024];
-  strcpy(sendMessage,"\nArquivos encontrados: \n");
+  char sendMessage [2048];
+  int length = 0;
+  length += sprintf(sendMessage + length,"\nArquivos encontrados: \n");
   //send(sock,sendMessage,strlen(sendMessage),0);
   DIR *dp;
-    struct dirent **list;
+  struct dirent **list;
 
-    int count = scandir("./", &list, NULL, alphasort );
-     if( count < 0 ){
-         perror("Couldn't open the directory");
-         exit(1);
-     }
-    //printf("%u items in directory\n", count);
-    for( int i=0; i<count;i++){
-            //sprintf(sendMessage  , "%s",list[i]->d_name); Concatena a string.
-     }
-     send(sock,sendMessage,strlen(sendMessage),0);
+  int count = scandir("./", &list, NULL, alphasort );
+    if( count < 0 ){
+        perror("Couldn't open the directory");
+        exit(1);
+    }
+  //printf("%u items in directory\n", count);
+  
+  for( int i=0; i<count;i++){
+        char *tmp = list[i]->d_name;
+        length += sprintf(sendMessage+length , "%s\n",tmp); //Concatena a string.
+  }
+  printf("%s",sendMessage); // sendMessega
+  //send(sock,sendMessage,strlen(sendMessage),0);
      
 }
 /*
